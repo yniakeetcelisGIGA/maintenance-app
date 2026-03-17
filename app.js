@@ -73,25 +73,65 @@ function updateStatus(id, newStatus) {
     render();
 }
 
+/**
+ * Stop the scanner and return to login fields
+ */
+function stopScanner() {
+    const readerElement = document.getElementById('reader');
+    const loginFields = document.getElementById('loginFields');
+    
+    if (window.html5QrCode) {
+        window.html5QrCode.stop().then(() => {
+            readerElement.style.display = 'none';
+            loginFields.style.display = 'block';
+            window.html5QrCode = null;
+        }).catch(err => {
+            console.error("Scanner stop error", err);
+            readerElement.style.display = 'none';
+            loginFields.style.display = 'block';
+        });
+    } else {
+        readerElement.style.display = 'none';
+        loginFields.style.display = 'block';
+    }
+}
+
+/**
+ * Start the scanner with a "Go Back" option
+ */
 function startScanner() {
     const readerElement = document.getElementById('reader');
     const loginFields = document.getElementById('loginFields');
+    
+    // Create UI for scanner with a Go Back button
+    readerElement.innerHTML = `
+        <div id="qr-display" style="width: 100%;"></div>
+        <button class="btn btn-outline" style="width: 100%; margin-top: 1rem;" onclick="stopScanner()">⬅ Go Back</button>
+    `;
+    
     readerElement.style.display = 'block';
     loginFields.style.display = 'none';
 
-    const html5QrCode = new Html5Qrcode("reader");
-    html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (decodedText) => {
-        html5QrCode.stop().then(() => {
-            readerElement.style.display = 'none';
-            loginFields.style.display = 'block';
-            const guestName = prompt("Enter your name to report this issue (Optional):");
-            // Default to Guest if prompt is left blank
-            const finalName = guestName?.trim() || "Guest"; 
-            state.currentUser = { username: finalName, role: 'user' };
-            localStorage.setItem('maintenance-user', JSON.stringify(state.currentUser));
-            navigate('submit', { roomId: decodedText });
-        });
-    }).catch(err => { alert("Camera error: " + err); render(); });
+    window.html5QrCode = new Html5Qrcode("qr-display");
+    window.html5QrCode.start(
+        { facingMode: "environment" }, 
+        { fps: 10, qrbox: 250 }, 
+        (decodedText) => {
+            window.html5QrCode.stop().then(() => {
+                readerElement.style.display = 'none';
+                loginFields.style.display = 'block';
+                // User enters name or defaults to Guest
+                const guestName = prompt("Enter your name (Optional):");
+                const finalName = guestName?.trim() || "Guest";
+                state.currentUser = { username: finalName, role: 'user' };
+                localStorage.setItem('maintenance-user', JSON.stringify(state.currentUser));
+                navigate('submit', { roomId: decodedText });
+            });
+        }
+    ).catch(err => { 
+        alert("Camera error: " + err); 
+        stopScanner(); 
+    });
 }
 
 // ==========================================
@@ -102,10 +142,14 @@ function handleLogin(role) {
     const nameInput = document.getElementById('loginName')?.value.trim();
     const password = document.getElementById('loginPassword')?.value;
     
-    // Logic update: Use "Guest" if name is blank
+    // Logic: Use "Guest" if name is blank
     const name = nameInput || "Guest";
 
-    if (role === 'admin' && password !== "Roque") { alert('Incorrect Admin Name or Password!'); return; }
+    if (role === 'admin' && password !== "Roque") { 
+        alert('Incorrect Admin Name or Password!'); 
+        return; 
+    }
+    
     state.currentUser = { username: name, role: role };
     localStorage.setItem('maintenance-user', JSON.stringify(state.currentUser));
     navigate(role === 'admin' ? 'dashboard' : 'submit');
@@ -143,11 +187,11 @@ function renderLogin() {
                     <div id="reader" style="width: 100%; display: none; margin-bottom: 1rem;"></div>
                     <div id="loginFields">
                         <div class="form-group">
-                            <label class="form-label"> Name <span class="text-muted">(Any Name)</span></label>
-                            <input type="text" id="loginName" class="form-input" placeholder="Name">
+                            <label class="form-label">Full Name <span class="text-muted">(Optional)</span></label>
+                            <input type="text" id="loginName" class="form-input" placeholder="Guest">
                         </div>
                         <div class="form-group"><label class="form-label">Admin Password</label>
-                            <input type="password" id="loginPassword" class="form-input" placeholder="Password"></div>
+                            <input type="password" id="loginPassword" class="form-input"></div>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                             <button class="btn btn-primary" onclick="handleLogin('admin')">Admin</button>
                             <button class="btn btn-secondary" onclick="handleLogin('user')">User</button>
@@ -196,7 +240,8 @@ function renderDashboard() {
 }
 
 function renderSubmitRequest() {
-    const selectedRoom = getUrlParams().roomId || "";
+    const params = getUrlParams();
+    const selectedRoom = params.roomId || "";
     
     const userHistory = state.requests.filter(req => req.submittedBy === state.currentUser.username)
         .sort((a, b) => (a.status === 'completed' ? 1 : -1));
