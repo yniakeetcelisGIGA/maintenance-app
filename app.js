@@ -100,7 +100,7 @@ function startScanner() {
     
     readerElement.innerHTML = `
         <div id="qr-display" style="width: 100%; min-height: 250px; background: #000; border-radius: 8px;"></div>
-        <button type="button" class="btn btn-secondary" style="width: 100%; margin-top: 1rem;" onclick="stopScanner()">
+        <button type="button" class="btn btn-secondary" style="width: 100%; margin-top: 1rem;" onclick="stopScanner(),logout()">
             ⬅ Cancel Scan
         </button>
     `;
@@ -138,7 +138,7 @@ function handleLogin(role) {
     const password = document.getElementById('loginPassword')?.value;
     const name = nameInput || "Guest";
 
-    if (role === 'admin' && password !== "Roque") { 
+    if (role === 'admin' && password !== "admin123") { 
         alert('Incorrect Admin Password!'); 
         return; 
     }
@@ -184,7 +184,7 @@ function renderLogin() {
                     <div id="loginFields">
                         <div class="form-group">
                             <label class="form-label">NAME(optional if user)</label>
-                            <input type="text" id="loginName" class="form-input" placeholder="Guest">
+                            <input type="text" id="loginName" class="form-input" placeholder="e.g Roque">
                         </div>
                         <div class="form-group">
                             <label class="form-label">ADMIN PASSWORD</label>
