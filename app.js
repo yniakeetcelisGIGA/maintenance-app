@@ -73,20 +73,18 @@ function updateStatus(id, newStatus) {
     render();
 }
 
-/**
- * Stop the scanner and return to login fields
- */
 function stopScanner() {
     const readerElement = document.getElementById('reader');
     const loginFields = document.getElementById('loginFields');
     
     if (window.html5QrCode) {
         window.html5QrCode.stop().then(() => {
+            window.html5QrCode = null;
             readerElement.style.display = 'none';
             loginFields.style.display = 'block';
-            window.html5QrCode = null;
+            readerElement.innerHTML = '';
         }).catch(err => {
-            console.error("Scanner stop error", err);
+            console.warn("Scanner stop error:", err);
             readerElement.style.display = 'none';
             loginFields.style.display = 'block';
         });
@@ -96,17 +94,15 @@ function stopScanner() {
     }
 }
 
-/**
- * Start the scanner with a "Go Back" option
- */
 function startScanner() {
     const readerElement = document.getElementById('reader');
     const loginFields = document.getElementById('loginFields');
     
-    // Create UI for scanner with a Go Back button
     readerElement.innerHTML = `
-        <div id="qr-display" style="width: 100%;"></div>
-        <button class="btn btn-outline" style="width: 100%; margin-top: 1rem;" onclick="stopScanner()">⬅ Go Back</button>
+        <div id="qr-display" style="width: 100%; min-height: 250px; background: #000; border-radius: 8px;"></div>
+        <button type="button" class="btn btn-secondary" style="width: 100%; margin-top: 1rem;" onclick="stopScanner()">
+            ⬅ Cancel Scan
+        </button>
     `;
     
     readerElement.style.display = 'block';
@@ -120,7 +116,6 @@ function startScanner() {
             window.html5QrCode.stop().then(() => {
                 readerElement.style.display = 'none';
                 loginFields.style.display = 'block';
-                // User enters name or defaults to Guest
                 const guestName = prompt("Enter your name (Optional):");
                 const finalName = guestName?.trim() || "Guest";
                 state.currentUser = { username: finalName, role: 'user' };
@@ -129,7 +124,7 @@ function startScanner() {
             });
         }
     ).catch(err => { 
-        alert("Camera error: " + err); 
+        console.error("Camera error:", err);
         stopScanner(); 
     });
 }
@@ -141,12 +136,10 @@ function startScanner() {
 function handleLogin(role) {
     const nameInput = document.getElementById('loginName')?.value.trim();
     const password = document.getElementById('loginPassword')?.value;
-    
-    // Logic: Use "Guest" if name is blank
     const name = nameInput || "Guest";
 
     if (role === 'admin' && password !== "Roque") { 
-        alert('Incorrect Admin Name or Password!'); 
+        alert('Incorrect Admin Password!'); 
         return; 
     }
     
@@ -180,23 +173,30 @@ function getUrlParams() {
 
 function renderLogin() {
     return `
-        <div class="container-sm" style="margin-top: 5vh;">
-            <div class="card">
-                <div class="card-header" style="text-align: center;"><h1>Maintenance System</h1></div>
+        <div class="container-sm">
+            <div class="card" style="border-top: 4px solid var(--primary);">
+                <div class="card-header" style="text-align: center;">
+                    <h1 style="color: var(--primary);">Maintenance System</h1>
+                    <p class="text-muted">QR-Based</p>
+                </div>
                 <div class="card-content">
                     <div id="reader" style="width: 100%; display: none; margin-bottom: 1rem;"></div>
                     <div id="loginFields">
                         <div class="form-group">
-                            <label class="form-label">Full Name <span class="text-muted">(Optional)</span></label>
+                            <label class="form-label">NAME(optional if user)</label>
                             <input type="text" id="loginName" class="form-input" placeholder="Guest">
                         </div>
-                        <div class="form-group"><label class="form-label">Admin Password</label>
-                            <input type="password" id="loginPassword" class="form-input"></div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                            <button class="btn btn-primary" onclick="handleLogin('admin')">Admin</button>
-                            <button class="btn btn-secondary" onclick="handleLogin('user')">User</button>
+                        <div class="form-group">
+                            <label class="form-label">ADMIN PASSWORD</label>
+                            <input type="password" id="loginPassword" class="form-input" placeholder="••••••••">
                         </div>
-                        <button class="btn btn-outline" style="width: 100%; margin-top: 1rem;" onclick="startScanner()">📷 Scan Room QR</button>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem;">
+                            <button class="btn btn-primary" onclick="handleLogin('admin')">Admin Login</button>
+                            <button class="btn btn-secondary" onclick="handleLogin('user')">User Access</button>
+                        </div>
+                        <div style="text-align: center; margin-top: 1.5rem; border-top: 1px solid var(--gray-200); padding-top: 1rem;">
+                            <button class="btn btn-outline" style="width: 100%;" onclick="startScanner()">📷 Scan Asset QR</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -205,32 +205,45 @@ function renderLogin() {
 
 function renderDashboard() {
     return `
-        <div class="container">
-            <div class="flex-between" style="margin-bottom: 2rem;">
-                <h1>Admin Dashboard</h1>
+        <div class="page-header">
+            <div class="container flex-between">
+                <h1>Work Orders</h1>
                 <div class="flex gap-1">
-                    <button class="btn btn-primary" onclick="navigate('rooms')">🏨 Rooms</button>
+                    <button class="btn btn-secondary" onclick="navigate('rooms')">🏨 Manage Rooms</button>
                     <button class="btn btn-outline" onclick="logout()">Logout</button>
                 </div>
             </div>
+        </div>
+        <div class="container">
             <div class="card">
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead style="background: var(--gray-50);">
-                        <tr><th style="padding: 1rem; text-align: left;">Issue</th><th style="padding: 1rem; text-align: left;">Room</th><th style="padding: 1rem; text-align: right;">Action</th></tr>
+                <table style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th>Maintenance Issue</th>
+                            <th>Location/Asset</th>
+                            <th style="text-align: right;">Actions</th>
+                        </tr>
                     </thead>
                     <tbody>
                         ${state.requests.map(req => `
-                            <tr style="border-bottom: 1px solid var(--gray-100);">
-                                <td style="padding: 1rem;">
-                                    <b>${req.title}</b><br>
-                                    <small>By ${req.submittedBy} | ${req.expectedFixAt ? '🕒 ' + req.expectedFixAt : 'No date'}</small>
+                            <tr>
+                                <td>
+                                    <div style="font-weight: 600;">${req.title}</div>
+                                    <div class="text-muted" style="font-size: 0.75rem;">
+                                        By ${req.submittedBy} • ${req.expectedFixAt ? 'Expected: ' + req.expectedFixAt : 'No date set'}
+                                    </div>
                                 </td>
-                                <td style="padding: 1rem;">${(state.rooms.find(r => r.id === req.assetId) || {}).name || 'Unknown'}</td>
-                                <td style="padding: 1rem; text-align: right;">
+                                <td>
+                                    <div class="badge badge-low" style="display:inline-block; margin-bottom: 4px;">Room</div><br>
+                                    ${(state.rooms.find(r => r.id === req.assetId) || {}).name || 'Unknown'}
+                                </td>
+                                <td style="text-align: right;">
                                     ${req.status !== 'completed' ? `
-                                        <button class="btn btn-outline btn-sm" onclick="setExpectedFix('${req.id}')">Set Date</button>
-                                        <button class="btn btn-primary btn-sm" onclick="updateStatus('${req.id}', 'completed')">Fixed</button>
-                                    ` : `<div style="color: var(--success); font-size: 0.7rem;">Fixed: ${req.completedAt}</div>`}
+                                        <div class="flex gap-1" style="justify-content: flex-end;">
+                                            <button class="btn btn-secondary btn-sm" onclick="setExpectedFix('${req.id}')">Schedule</button>
+                                            <button class="btn btn-primary btn-sm" onclick="updateStatus('${req.id}', 'completed')">Mark Fixed</button>
+                                        </div>
+                                    ` : `<span style="color: var(--success); font-weight:600; font-size: 0.8rem;">✓ COMPLETED</span>`}
                                 </td>
                             </tr>`).join('')}
                     </tbody>
@@ -242,55 +255,87 @@ function renderDashboard() {
 function renderSubmitRequest() {
     const params = getUrlParams();
     const selectedRoom = params.roomId || "";
-    
     const userHistory = state.requests.filter(req => req.submittedBy === state.currentUser.username)
         .sort((a, b) => (a.status === 'completed' ? 1 : -1));
 
     return `
-        <div class="container-sm">
-            <div class="flex-between"><h1>Report Issue</h1><button class="btn btn-outline btn-sm" onclick="logout()">Logout</button></div>
-            <div class="card" style="margin: 1rem 0;">
+        <div class="page-header">
+            <div class="container flex-between">
+                <h1>Submit Request</h1>
+                <button class="btn btn-outline btn-sm" onclick="logout()">Logout</button>
+            </div>
+        </div>
+        <div class="container" style="max-width: 600px;">
+            <div class="card">
                 <div class="card-content">
                     <form id="submitRequestForm">
-                        <select id="requestAsset" class="form-select" required>
-                            <option value="">Select Room</option>
-                            ${state.rooms.map(r => `<option value="${r.id}" ${r.id === selectedRoom ? 'selected' : ''}>${r.name}</option>`).join('')}
-                        </select>
-                        <input type="text" id="requestTitle" class="form-input" style="margin: 1rem 0;" placeholder="What is broken?" required>
-                        <select id="requestPriority" class="form-select" style="margin-bottom: 1rem;">
-                            <option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option>
-                        </select>
-                        <button type="submit" class="btn btn-primary" style="width: 100%;">Submit Report</button>
+                        <div class="form-group">
+                            <label class="form-label">SELECT ASSET</label>
+                            <select id="requestAsset" class="form-select" required>
+                                <option value="">Choose a room...</option>
+                                ${state.rooms.map(r => `<option value="${r.id}" ${r.id === selectedRoom ? 'selected' : ''}>${r.name} - ${r.location}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">ISSUE DESCRIPTION</label>
+                            <input type="text" id="requestTitle" class="form-input" placeholder="e.g. Broken light fixture" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">PRIORITY LEVEL</label>
+                            <select id="requestPriority" class="form-select">
+                                <option value="low">Low - Routine</option>
+                                <option value="medium" selected>Medium - Urgent</option>
+                                <option value="high">High - Emergency</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.8rem; margin-top: 1rem;">Submit Work Order</button>
                     </form>
                 </div>
             </div>
-            <h3>Your History (${userHistory.length})</h3>
-            <div class="card">
-                ${userHistory.length === 0 ? `<div style="padding:2rem; text-align:center;" class="text-muted">You haven't reported any issues yet.</div>` : 
-                userHistory.map(req => `
-                    <div style="padding: 1rem; border-bottom: 1px solid var(--gray-100); opacity: ${req.status === 'completed' ? 0.6 : 1}">
-                        <div class="flex-between"><b>${req.title}</b><span class="badge badge-${req.priority}">${req.priority}</span></div>
-                        <div style="font-size: 0.8rem; margin-top: 5px;">
-                            ${req.status === 'completed' ? `<span style="color: var(--success);">✅ Fixed: ${req.completedAt}</span>` : 
-                            `⏳ Pending ${req.expectedFixAt ? `<br><span style="color: var(--primary);">🕒 Expected: ${req.expectedFixAt}</span>` : ''}`}
+
+            <h3 style="margin: 2rem 0 1rem;">Your Submission History</h3>
+            ${userHistory.length === 0 ? `<div class="card" style="padding:2rem; text-align:center; color: var(--gray-500);">No requests found.</div>` : 
+            userHistory.map(req => `
+                <div class="card" style="opacity: ${req.status === 'completed' ? 0.7 : 1}">
+                    <div class="card-content flex-between">
+                        <div>
+                            <div style="font-weight: 600;">${req.title}</div>
+                            <div class="text-muted">
+                                ${req.status === 'completed' ? `✅ Resolved` : `⏳ Pending ${req.expectedFixAt ? '• Due: '+req.expectedFixAt : ''}`}
+                            </div>
                         </div>
-                    </div>`).join('')}
-            </div>
+                        <span class="badge badge-${req.priority}">${req.priority}</span>
+                    </div>
+                </div>`).join('')}
         </div>`;
 }
 
 function renderRooms() {
-    return `<div class="container">
-        <div class="flex-between"><h1>Rooms</h1><button class="btn btn-outline" onclick="navigate('dashboard')">Back</button></div>
-        <div class="card" style="margin-top: 1rem;">
-            ${state.rooms.map(r => `<div style="padding: 1rem; border-bottom: 1px solid var(--gray-100);">${r.name} - ${r.location}</div>`).join('')}
+    return `
+        <div class="page-header">
+            <div class="container flex-between">
+                <h1>Asset Registry</h1>
+                <button class="btn btn-secondary" onclick="navigate('dashboard')">Back to Dashboard</button>
+            </div>
         </div>
-    </div>`;
+        <div class="container">
+            <div class="card">
+                <table>
+                    <thead>
+                        <tr><th>Asset Name</th><th>Location</th><th>Category</th></tr>
+                    </thead>
+                    <tbody>
+                        ${state.rooms.map(r => `
+                            <tr>
+                                <td style="font-weight:600;">${r.name}</td>
+                                <td>${r.location}</td>
+                                <td><span class="badge badge-low">${r.category}</span></td>
+                            </tr>`).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>`;
 }
-
-// ==========================================
-// Init & Events
-// ==========================================
 
 function render() {
     const app = document.getElementById('app');
@@ -321,7 +366,7 @@ function render() {
             };
             state.requests.unshift(newReq);
             Storage.setRequests(state.requests);
-            alert('Success!'); render();
+            alert('Work Order Created Successfully!'); render();
         };
     }
 }
